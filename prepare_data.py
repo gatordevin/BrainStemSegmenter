@@ -62,13 +62,13 @@ for idx, (image_path, label_path) in enumerate(image_label_pair):
     # print("Image shape : " + str(shape))
 
     label_im = Image.new('L', size, 0)
-    for idx, label in enumerate(rois.keys()):
+    for pidx, label in enumerate(rois.keys()):
         x_points = rois[label]["x"]
         y_points = rois[label]["y"]
         polygon = list(zip(x_points, y_points))
-        ImageDraw.Draw(label_im).polygon(polygon, outline=idx+1, fill=idx+1)
+        ImageDraw.Draw(label_im).polygon(polygon, outline=pidx+1, fill=pidx+1)
     
     mask = numpy.array(label_im)
     im.save(processed_data + dataset_folder_name + "/image_" + str(idx) + ".png", 'PNG')
     label_im.save(processed_data + dataset_folder_name + "/image_" + str(idx) + "_label.png", 'PNG')
-    print("image_" + idx + " saved")
+    print("image_" + str(idx) + " saved")
