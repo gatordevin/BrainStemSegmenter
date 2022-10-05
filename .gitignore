@@ -1,3 +1,8 @@
 *.ckpt
 *.pyc
+*.tif
+*.png
+*.zip
+*.tiff
+*.DS_Store
 MNIST/
