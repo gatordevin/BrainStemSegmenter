@@ -5,4 +5,7 @@
 *.zip
 *.tiff
 *.DS_Store
+client_secrets.*
+credentials.*
+settings.yaml
 MNIST/

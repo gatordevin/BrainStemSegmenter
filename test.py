@@ -1,18 +1,23 @@
+import cv2
 import os
-from torch import optim, nn, utils, Tensor
-from torchvision.datasets import MNIST
-from torchvision.transforms import ToTensor
-import pytorch_lightning as pl
-from model import LitAutoEncoder
+from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
+from time import sleep
+import numpy
 
-checkpoint = "lightning_logs/version_4/checkpoints/epoch=99-step=10000.ckpt"
-autoencoder = LitAutoEncoder.load_from_checkpoint(checkpoint)
+folder = "C:/Users/gator/Downloads/Photos-001"
 
-# choose your trained nn.Module
-encoder = autoencoder.encoder
-encoder.eval()
+images = []
+for path in os.listdir(folder):
+    image = cv2.imread(folder + "/" + path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    images.append(image)
 
-# embed 4 fake images!
-fake_image_batch = Tensor(4, 28 * 28)
-embeddings = encoder(fake_image_batch)
-print("⚡" * 20, "\nPredictions (4 image embeddings):\n", embeddings, "\n", "⚡" * 20)
+stitcher = cv2.Stitcher_create()
+(status, stitched) = stitcher.stitch(images)
+
+plt.imshow(stitched)
+plt.show()
+
+img = Image.fromarray(stitched, "RGB")
+img.save("C:/Users/gator/Downloads/farm.png", 'PNG')

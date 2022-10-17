@@ -1,5 +1,5 @@
 import os
-from PIL import Image, ImageDraw
+
 import numpy
 import matplotlib.pyplot as plt
 from read_roi import read_roi_zip
