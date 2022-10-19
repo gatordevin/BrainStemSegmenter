@@ -1,9 +1,12 @@
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from time import sleep
+import matplotlib.pyplot as plt
 import re
 import os
 import shutil
+import cv2
+from PIL import Image, ImageDraw
 # Rename the downloaded JSON file to client_secrets.json
 # The client_secrets.json file needs to be in the same directory as the script.
 gauth = GoogleAuth()
@@ -26,11 +29,19 @@ def find_images(folder):
     while len(folders) > 0:
         file_list = drive.ListFile({'q': "'{0}' in parents and trashed=false".format(folders[0]["id"])}).GetList()
         folder = folders.pop(0)
+        already_stitched = False
+        for file in file_list:
+            if("Stitched" in file["title"]):
+                already_stitched = True 
+                break
+        if(already_stitched):
+            continue
         for file in file_list:
             if(file["mimeType"]=="application/vnd.google-apps.folder"):
                 print("Folder found : " + str(file["title"]))
                 folders.append(file)
             if("image" in file["mimeType"]):
+                # print(file)
                 if folder["id"] not in found_images.keys():
                     found_images[folder["id"]] = {}
                     found_images[folder["id"]]["file"] = folder
@@ -58,13 +69,16 @@ def filter_images(files):
                 section, take_number, sub_image, extension = file_name.split(".")
             if("tif" in extension):
                 sub_image_number = re.sub("[^0-9]", "", sub_image)
+                stain = sub_image[-1]
                 section_split = section.split("r")
                 section_row = section_split[-1]
                 section_column = section_split[-2].split("c")[-1]
-                if(section not in filtered_images.keys()):
-                    filtered_images[section] = []
-                filtered_images[section].append({
+                image_group = section+stain
+                if(image_group not in filtered_images.keys()):
+                    filtered_images[image_group] = []
+                filtered_images[image_group].append({
                     "sub_image_number" : int(sub_image_number),
+                    "stain" : stain,
                     "section_row" : int(section_row),
                     "section_column" : int(section_column),
                     "take" : take_number,
@@ -78,11 +92,46 @@ def filter_images(files):
         filtered_images[key].sort(key=lambda x: x["sub_image_number"])
     return filtered_images
 
-def download_images(filtered_dict):
-    for key in filtered_dict.keys():
+def download_and_stitch_images(filtered_dict, save_id, save_name):
         os.makedirs("tmp_drive_images/"+key, exist_ok=True)
-        for image_dict in filtered_dict[key]:
-            image_dict["file"].GetContentFile("tmp_drive_images/"+key+"/"+image_dict["file"]["title"])
+        images = []
+        stitcher = cv2.Stitcher_create()
+        take_number = 0
+        for image_dict in filtered_dict:
+            if(int(image_dict["take"])>take_number):
+                take_number = int(image_dict["take"])
+        for image_dict in filtered_dict:
+            if(int(image_dict["take"]) == take_number):
+                image_dict["file"].GetContentFile("tmp_drive_images/"+key+"/"+image_dict["file"]["title"])
+                image = cv2.imread("tmp_drive_images/"+key+"/"+image_dict["file"]["title"])
+                images.append(image)
+        print(len(images))
+        (status, stitched) = stitcher.stitch(images)
+        if(status==0):
+            # plt.imshow(stitched*2)
+            # plt.show()
+            img = Image.fromarray(stitched, "RGB").convert("L")
+            img.save("tmp_drive_images/"+ key + "/PM.tiff", 'TIFF')
+            image_upload = drive.CreateFile({
+                    'title': save_name + "_PM",
+                    'parents': [{'id': save_id}],
+                    'mimeType': 'image/tiff'
+                    })
+            image_upload.SetContentFile("tmp_drive_images/"+ key + "/PM.tiff")
+            image_upload.Upload()
+            del image_upload
+        else:
+            print("Stitch failed with error code: " + str(status) + " : " + key)
+        del stitcher
+        while(True):
+            try:
+                shutil.rmtree("tmp_drive_images/"+key)
+                break
+            except PermissionError:
+                print("Image still be uploaded")
+                sleep(1)
+            
+        
             
     
 while(True):
@@ -101,14 +150,30 @@ while(True):
         print(image_ids[key]["file"]["title"])
         image_dicts = filter_images(image_ids[key]["images"])
         print("images_filtered")
-        download_images(image_dicts)
-        shutil.rmtree("tmp_drive_images")
-        # for image in image_ids[key]["images"]:
-        #     print("     " + image["title"])
-        # drive_file.Upload()
-        # drive_file['parents'] = [{"kind": "drive#parentReference", "id": target_id}]
-        # drive_file.Upload()
-        # print("moving")
+
+        file_metadata = {
+        'title': 'Stitched',
+        'parents': [{'id': key}],
+        'mimeType': 'application/vnd.google-apps.folder'
+        }
+        folder = drive.CreateFile(file_metadata)
+        folder.Upload()
+        while(not folder.uploaded):
+            print("Creating photomerge folder")
+            sleep(1)
+        print(folder["id"])
+
+        for key in image_dicts.keys():
+            image = download_and_stitch_images(image_dicts[key], folder["id"], key)
+        # After downloading images need to have them ready and loaded into numpy array
+        # Will then photomerge the image and upload to google drive
+        # Photomerged image should go in the root animal folder with photomerged folder name
+        # Not only does the tmp directory for stiching need to be deleted but the name of the root dir needs to be rememebred and not restiched
+        # It also needs to be removed from the stitching folder
+        # Once removed from the folder we can move it from the ban list in case it gets moved back in
+        # This should make stitching as simple as dragging the images into stitch folder after upload then just waiting
+        # Eventually they will stitch and get booted from that folder with the fully stitched image
+        # Now for future folders that will have analysis and such it will by default find and used the photomerged images only
 
     sleep(1)
 # fileList = drive.ListFile({'q': "'Fuller Lab Images' in parents"}).GetList()
