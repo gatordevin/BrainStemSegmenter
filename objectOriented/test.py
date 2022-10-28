@@ -5,10 +5,10 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
 dataset = CountceptionDataset("objectOriented/MBM-dataset.pkl")
-train_loader = DataLoader(dataset, batch_size=2, shuffle=True, num_workers=0)
+train_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
 
 model = CountCeptionModel()
 
 # training
-trainer = pl.Trainer(gpus=4, precision=16, limit_train_batches=0.5)
-trainer.fit(model, train_loader)
+trainer = pl.Trainer(gpus=1, precision=16, limit_train_batches=0.5)
+trainer.fit(model, train_loader,)

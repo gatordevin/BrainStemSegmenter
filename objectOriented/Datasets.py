@@ -20,8 +20,8 @@ class DatasetObject(Dataset):
         return len(self._data_pairs)
 
 class COCODatasetObject(DatasetObject):
-    def __init__(self, mode="train", train_ratio=1, valid_ratio=0, test_ratio=0) -> None:
-        super().__init__(mode, train_ratio, valid_ratio, test_ratio)
+    def __init__(self) -> None:
+        super().__init__()
         self.__coco_json = {}
 
     def __prepare_data(self):
@@ -34,8 +34,8 @@ class COCODatasetObject(DatasetObject):
         return image, target
 
 class CountceptionDataset(DatasetObject):
-    def __init__(self, pickle_dataset_path, mode="train", train_ratio=1, valid_ratio=0, test_ratio=0) -> None:
-        super().__init__(mode, train_ratio, valid_ratio, test_ratio)
+    def __init__(self, pickle_dataset_path) -> None:
+        super().__init__()
         self.__pickle_dataset_path = pickle_dataset_path
         self.__prepare_data()
         

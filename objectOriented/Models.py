@@ -106,8 +106,8 @@ class CountCeptionModel(ModelObject):
         return pred
 
     def configure_optimizers(self):
-        optim = optim.Adam(self.parameters(), lr=self.lr)
-        return optim
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
     
     def training_step(self, train_batch, batch_idx):
         input, heatmap, count = train_batch
