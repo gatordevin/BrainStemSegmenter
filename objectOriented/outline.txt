@@ -1,0 +1,21 @@
+Start with data
+    data-types
+        image
+        text
+Label all data
+    data-types
+        box
+        text
+        image
+
+Create Dataset class with data and labels
+    file structure dataset-built-ins
+        COCODataset 
+
+Model can be created using Dataset
+    Model types (Can be sorted based on input and output data of model)
+        ImageModel
+            classification
+            detection
+            segmentation
+            counting

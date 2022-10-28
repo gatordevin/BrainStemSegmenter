@@ -4,8 +4,8 @@ import numpy
 import matplotlib.pyplot as plt
 from read_roi import read_roi_zip
 
-data_folder = "data/Animal 1/Slide A/NEUN"
-
+data_folder = "resized/Animal 1 Photomerge (624 x 624)"
+labels = {"Gray" : 1 , "White" : 2}
 image_label_pair = []
 if(os.path.isdir(data_folder)):
     print("Valid Data Folder")
@@ -65,8 +65,14 @@ for idx, (image_path, label_path) in enumerate(image_label_pair):
     for pidx, label in enumerate(rois.keys()):
         x_points = rois[label]["x"]
         y_points = rois[label]["y"]
+        label_id = 0
+        for key in labels.keys():
+            if key in rois[label]["name"]:
+                label_id = labels[key]
         polygon = list(zip(x_points, y_points))
-        ImageDraw.Draw(label_im).polygon(polygon, outline=pidx+1, fill=pidx+1)
+        ImageDraw.Draw(label_im).polygon(polygon, outline=label_id, fill=label_id)
+    # plt.imshow(label_im)
+    # plt.show()
     
     mask = numpy.array(label_im)
     im.save(processed_data + dataset_folder_name + "/image_" + str(idx) + ".png", 'PNG')
