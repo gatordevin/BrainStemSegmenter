@@ -1,6 +1,6 @@
-from .Datasets import CountceptionDataset
+from Datasets import CountceptionDataset
 from matplotlib import pyplot as plt
-from .Models import CountCeptionModel
+from Models import CountCeptionModel
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
