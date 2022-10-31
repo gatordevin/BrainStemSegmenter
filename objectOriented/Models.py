@@ -70,7 +70,7 @@ class CountCeptionModel(ModelObject):
         # Weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                init.xavier_uniform(m.weight, gain=init.calculate_gain('leaky_relu', param=0.01))
+                init.xavier_uniform_(m.weight, gain=init.calculate_gain('leaky_relu', param=0.01))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
@@ -121,3 +121,9 @@ class CountCeptionModel(ModelObject):
         pred = self.model(input)
         loss = self.criterion(pred, heatmap)
         self.log('val_loss', loss)
+
+    def test_step(self, val_batch, batch_idx):
+        input, heatmap, count = val_batch
+        pred = self.model(input)
+        loss = self.criterion(pred, heatmap)
+        self.log('test_loss', loss)
