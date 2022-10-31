@@ -60,21 +60,21 @@ class CountceptionRawDataset(DatasetObject):
         self.__prepare_data()
         
     def __prepare_data(self):
-        for dot_path in os.listdir(self.__data_folder_path):
-            if("dots" in dot_path):
-                image_path = dot_path.replace("_dots", "")
-                label_path = dot_path.replace("_dots", "_label")
-                im = imread(image_path)
-                framesize = 600
-                img_raw = scipy.misc.imresize(im, (framesize, framesize))
-                for base_x in range(0, img_raw.shape[0], framesize):
-                    for base_y in range(0, img_raw.shape[1], framesize):
-                        pass
-        self.__pickle_dataset = pickle.load(open(self.__pickle_dataset_path, "rb"))
-        self.__dataset_images = np.asarray([ImageDataObject(image_array = d[0]) for d in self.__pickle_dataset])
-        self.__dataset_heatmaps = np.asarray([ImageDataObject(image_array = d[1]) for d in self.__pickle_dataset])
-        self.__dataset_counts = np.asarray([NumberDataObject(d[2][0]) for d in self.__pickle_dataset])
-        self._data_pairs = list(zip(self.__dataset_images, list(zip(self.__dataset_heatmaps, self.__dataset_counts))))
+        data = []
+        for image_name in os.listdir(self.__data_folder_path):
+            if("label" in image_name):
+                input_name = image_name.replace("_label", "")
+                target_name = image_name
+                input_path = self.__data_folder_path + "/" + input_name
+                target_path = self.__data_folder_path + "/" + target_name
+                input_im = imread(input_path)
+                target_im = imread(target_path)
+                count = image_name.split("_")[-2]
+                data.append([input_im, target_im, count])
+            self.__dataset_images = np.asarray([ImageDataObject(image_array = [0]) for d in data])
+            self.__dataset_heatmaps = np.asarray([ImageDataObject(image_array = d[1]) for d in data])
+            self.__dataset_counts = np.asarray([NumberDataObject(d[2]) for d in data])
+            self._data_pairs = list(zip(self.__dataset_images, list(zip(self.__dataset_heatmaps, self.__dataset_counts))))
 
     def __getitem__(self, item: int):
         image, (heatmap, count) = super().__getitem__(item)
