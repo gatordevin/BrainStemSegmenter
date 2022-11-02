@@ -8,7 +8,7 @@ from math import ceil
 import os
 import scipy
 from skimage.io import imread
-
+from matplotlib import pyplot as plt
 class DatasetObject(Dataset):
     def __init__(self) -> None:
         self._data_pairs = [[]]
@@ -44,6 +44,7 @@ class CountceptionPickleDataset(DatasetObject):
         
     def __prepare_data(self):
         self.__pickle_dataset = pickle.load(open(self.__pickle_dataset_path, "rb"))
+        # print("Dtype " + str(self.__pickle_dataset[0][0].dtype))
         self.__dataset_images = np.asarray([ImageDataObject(image_array = d[0]) for d in self.__pickle_dataset])
         self.__dataset_heatmaps = np.asarray([ImageDataObject(image_array = d[1]) for d in self.__pickle_dataset])
         self.__dataset_counts = np.asarray([NumberDataObject(d[2][0]) for d in self.__pickle_dataset])
@@ -58,6 +59,12 @@ class CountceptionRawDataset(DatasetObject):
         super().__init__()
         self.__data_folder_path = data_folder
         self.__prepare_data()
+        self.transform = transforms.Compose([
+           transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+           transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
+           transforms.RandomAutocontrast()
+
+       ])
         
     def __prepare_data(self):
         data = []
@@ -68,15 +75,20 @@ class CountceptionRawDataset(DatasetObject):
                 input_path = self.__data_folder_path + "/" + input_name
                 target_path = self.__data_folder_path + "/" + target_name
                 input_im = imread(input_path)
-                target_im = imread(target_path)
+                target_im = Image.open(target_path)
+                target_im = np.asarray(target_im, dtype=np.float32)
+                # print("Dtype " + str(target_im.dtype))
                 count = image_name.split("_")[-2]
                 data.append([input_im, target_im, count])
-            self.__dataset_images = np.asarray([ImageDataObject(image_array = [0]) for d in data])
-            self.__dataset_heatmaps = np.asarray([ImageDataObject(image_array = d[1]) for d in data])
-            self.__dataset_counts = np.asarray([NumberDataObject(d[2]) for d in data])
-            self._data_pairs = list(zip(self.__dataset_images, list(zip(self.__dataset_heatmaps, self.__dataset_counts))))
+        self.__dataset_images = np.asarray([ImageDataObject(image_array = d[0]) for d in data])
+        self.__dataset_heatmaps = np.asarray([ImageDataObject(image_array = d[1]) for d in data])
+        self.__dataset_counts = np.asarray([NumberDataObject(int(d[2])) for d in data])
+        self._data_pairs = list(zip(self.__dataset_images, list(zip(self.__dataset_heatmaps, self.__dataset_counts))))
+        # print(self.__dataset_heatmaps[0].get_data())
+        # plt.imshow(self.__dataset_heatmaps[0].get_data())
+        # plt.show()
 
     def __getitem__(self, item: int):
         image, (heatmap, count) = super().__getitem__(item)
-        return image.as_tensor(), heatmap.as_tensor(), count.as_tensor()
+        return self.transform(image.as_tensor()), heatmap.as_tensor(), count.as_tensor()
         

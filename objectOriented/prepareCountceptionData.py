@@ -4,9 +4,12 @@ from scipy import stats
 from roifile import ImagejRoi
 from matplotlib import pyplot as plt
 import numpy as np
+from skimage.transform import resize
+import cv2
 
-dataset_dir = "C:/Users/gator/BrainStemSegmenter/Data_10-28-2022"
+dataset_dir = "C:/Users/gator/FullerLab/BrainStemSegmenter/Data_10-28-2022"
 crop_image_shape = (300, 300)
+image_scale = 1
 patch_size = 32
 noutputs = 1
 
@@ -17,83 +20,10 @@ def remove_coord(target_coord, coord_list):
                 coord_list = np.delete(coord_list, idx, 0)
     return coord_list
 
-# def genGausImage(framesize, mx, my, cov=1):
-#     x, y = np.mgrid[0:framesize, 0:framesize]
-#     pos = np.dstack((x, y))
-#     mean = [mx, my]
-#     cov = [[cov, 0], [0, cov]]
-#     rv = stats.multivariate_normal(mean, cov).pdf(pos)
-#     return rv/rv.sum()
-
-# def getDensity(width, markers):
-#     gaus_img = np.zeros((width,width))
-#     for k in range(width):
-#         for l in range(width):
-#             if (markers[k,l] > 0.5):
-#                 gaus_img += genGausImage(len(markers),k-patch_size/2,l-patch_size/2,cov)
-#     return gaus_img
-
-# def getMarkersCells(rois, size):  
-#     lab = io.imread("objectOriented/TestPics/BM_GRAZ_HE_0001_01_000.png")[:,:, 0]/255
-#     # lab = np.zeros(size) 
-#     # print(lab.shape)
-#     # for roi in rois:
-#     #     lab[int(roi[1]),int(roi[0])] = 1
-#     print(lab.shape)
-#     binsize = [2,2]
-#     out = np.zeros(size)
-#     for i in range(binsize[0]):
-#         for j in range(binsize[1]):
-#             print(i, j)
-#             print(lab[i::binsize[0], j::binsize[1]].shape)
-#             out = np.maximum(lab[i::binsize[0], j::binsize[1]], out)
-        
-#     print(lab.sum(),out.sum())
-#     # assert np.allclose(lab.sum(),out.sum(), 1)
-    
-    
-#     return out#np.pad(lab,patch_size, "constant")
-
-# def getCellCountCells(markers, size):
-#     x,y,h,w = size
-#     types = [0] * noutputs
-#     for i in range(noutputs):
-#         types[i] = (markers[y:y+h,x:x+w] == 1).sum()
-#         #types[i] = (markers[y:y+h,x:x+w] != -1).sum()
-#     return types
-
-# def getLabelsCells(markers, img_pad, stride, scale):
-#     height = int((img_pad.shape[0])/stride)
-#     width = int((img_pad.shape[1])/stride)
-#     print("label size: ", height, width)
-#     labels = np.zeros((noutputs, height, width))
-#     print("base_x",0, 0, height, height)
-#     for y in range(0,height):
-#         for x in range(0,width):
-#             count = getCellCountCells(markers,(x*stride,y*stride,patch_size,patch_size))  
-#             for i in range(0,noutputs):
-#                 labels[i][y][x] = count[i]
-    
-
-#     count_total = getCellCountCells(markers,(0,0,height+patch_size,width+patch_size))
-#     return labels, count_total
-
-# def getTrainingExampleCells(img, framesize_w, framesize_h, rois, stride, scale):
-#     label_img_shape = (framesize_w+patch_size, framesize_h+patch_size)
-#     markers = getMarkersCells(rois, (300, 300))
-#     markers = markers[0:framesize_h, 0:framesize_w]
-#     markers = np.pad(markers, patch_size, "constant", constant_values=-1)
-    
-#     labels, count  = getLabelsCells(markers, rois, stride, scale)
-#     return img, labels, count
-
-# image = io.imread("objectOriented/TestPics/BM_GRAZ_HE_0001_01_000.png")
-# img, lab, count = getTrainingExampleCells("objectOriented/TestPics/BM_GRAZ_HE_0001_01_dots_000.png", crop_image_shape[0], crop_image_shape[1], [], 1, 2)
-
 for file_name in os.listdir(dataset_dir):
     file_path = dataset_dir + "/" + file_name
     image_name = file_name.replace(".roi", ".tif")
-    cropped_path = dataset_dir + "/cropped"
+    cropped_path = dataset_dir + "/cropped_half_scale"
     os.makedirs(cropped_path, exist_ok=True)
     if ".roi" in file_path:
         roi = ImagejRoi.fromfile(file_path)
@@ -107,12 +37,12 @@ for file_name in os.listdir(dataset_dir):
         while len(rois_remaining)>0:
             print(len(rois_remaining))
             x, y = rois_remaining[0]
-            left = int(x-150)
-            top = int(y-150)
-            right = int(x+150)
-            bottom = int(y+150)
+            left = int(x-(crop_image_shape[0]/2))
+            top = int(y-(crop_image_shape[1]/2))
+            right = int(x+(crop_image_shape[0]/2))
+            bottom = int(y+(crop_image_shape[1]/2))
             crop_image = image[top:bottom,left:right]
-
+            print(crop_image.shape)
             rois_in_crop = []
             for roi in all_rois:
                 roi_x, roi_y = roi
@@ -121,13 +51,16 @@ for file_name in os.listdir(dataset_dir):
                     rois_remaining = remove_coord(roi, rois_remaining)
             rois_in_crop = np.array(rois_in_crop)
 
-            label_img = np.zeros((crop_image.shape[0]+patch_size, crop_image.shape[1]+patch_size))
+            label_img = np.zeros((crop_image.shape[0]+(patch_size*image_scale), crop_image.shape[1]+(patch_size*image_scale))).astype(np.uint8)
             for x, y in rois_in_crop:
                 left = int(x)
                 top = int(y)
-                right = int(x+patch_size)
-                bottom = int(y+patch_size)
+                right = int(x+(patch_size*image_scale))
+                bottom = int(y+(patch_size*image_scale))
                 label_img[top:bottom,left:right] += 1
+            
+            crop_image = cv2.resize(crop_image, dsize=(int(crop_image.shape[0]/image_scale), int(crop_image.shape[1]/image_scale)), interpolation=cv2.INTER_CUBIC)
+            label_img = cv2.resize(label_img, dsize=(int(label_img.shape[0]/image_scale), int(label_img.shape[1]/image_scale)), interpolation=cv2.INTER_CUBIC)
 
             # Save images to folder
             split_image_name = image_name.split(".")
@@ -137,6 +70,10 @@ for file_name in os.listdir(dataset_dir):
             cropped_label_file_path = cropped_path + "/" + cropped_label_file_name
             io.imsave(cropped_file_path, crop_image)
             io.imsave(cropped_label_file_path, label_img)
+            f, axarr = plt.subplots(2,1)
+            # axarr[0].imshow(label_img.astype(np.uint8))
+            # axarr[1].imshow(crop_image.astype(np.uint8))
+            # plt.show()
             print("saved: " + cropped_label_file_name)
             print("saved: " + cropped_file_name)
             index+=1

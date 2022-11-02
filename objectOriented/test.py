@@ -1,21 +1,31 @@
-from Datasets import CountceptionPickleDataset
+from Datasets import CountceptionPickleDataset, CountceptionRawDataset
 from matplotlib import pyplot as plt
 from Models import CountCeptionModel
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from torch.utils.data import random_split
+import numpy as np
 
 if __name__ == '__main__':
-    dataset = CountceptionPickleDataset("objectOriented/MBM-dataset.pkl")
+    # dataset = CountceptionPickleDataset("objectOriented/MBM-dataset.pkl")
+    dataset = CountceptionRawDataset("C:/Users/gator/FullerLab/BrainStemSegmenter/Data_10-28-2022/cropped")
 
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [15,15,14])
+    # for data in dataset:
+    #     f, axarr = plt.subplots(2,1)
+    #     print(data[0].shape)
+    #     print(data[1][0].shape)
+    #     axarr[0].imshow(data[0].detach().permute(1, 2, 0))
+    #     print(data[1][0].dtype)
+    #     axarr[1].imshow(data[1][0].detach())
+    #     plt.show()
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [174,20,20])
 
     train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=4)
 
     model = CountCeptionModel()
-    model = model.load_from_checkpoint("lightning_logs/version_14/checkpoints/epoch=999-step=4000.ckpt")
+    model = model.load_from_checkpoint("C:/Users/gator/FullerLab/BrainStemSegmenter/lightning_logs/version_21/checkpoints/epoch=435-step=18748 copy.ckpt")
     # model.eval()
 
     for idx, data in enumerate(test_loader):
@@ -25,9 +35,12 @@ if __name__ == '__main__':
         loss = model.training_step(data,idx)
         print(loss)
         pred = model.forward(img)
-        f, axarr = plt.subplots(2,1) 
-        axarr[0].imshow(target[0].detach().permute(1, 2, 0))
-        axarr[1].imshow(pred[0].detach().permute(1, 2, 0))
+        f, axarr = plt.subplots(1,1) 
+        # axarr[0].imshow(target[0].detach().permute(1, 2, 0))
+        print(img.shape)
+        axarr.imshow(np.pad(img[0].detach().permute(1,2,0)[:,:,0],16, "constant"))
+        axarr.imshow(pred[0].detach().permute(1, 2, 0),alpha=0.3)
+        plt.savefig("image_"+str(idx)+".png")
         plt.show()
     # training
 

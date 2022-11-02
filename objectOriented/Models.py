@@ -117,9 +117,22 @@ class CountCeptionModel(ModelObject):
         return loss
     
     def validation_step(self, val_batch, batch_idx):
+        tensorboard = self.logger.experiment
         input, heatmap, count = val_batch
         pred = self.model(input)
         loss = self.criterion(pred, heatmap)
+        tensorboard.add_image('target', heatmap[0], 0, dataformats='CHW')
+        tensorboard.add_image('pred', pred[0], 0, dataformats='CHW')
+        patch_size = 32
+        ef = ((patch_size / 1) ** 2.0)
+        for pred_i, count_i in zip(pred, count):
+            output_count = (pred_i.cpu().detach().numpy() / ef).sum(axis=(1, 2))[0]
+            # print(output_count)
+            target_count = count_i.data.cpu().detach().numpy()[0]
+            # print(target_count)
+            count_diff = output_count-target_count
+            self.log('val_count_diff', count_diff)
+        # print(pred.shape)
         self.log('val_loss', loss)
 
     def test_step(self, val_batch, batch_idx):

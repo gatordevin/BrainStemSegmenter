@@ -2,6 +2,7 @@ from PIL import Image
 import PIL
 import numpy as np
 import torchvision.transforms as transforms
+import torch
 
 class DataOject():
     def __init__(self) -> None:
@@ -14,7 +15,9 @@ class DataOject():
         self._data = data
 
     def as_tensor(self):
+        # print(self._data.dtype)
         tensor = transforms.ToTensor()(self._data)
+        # print(tensor.dtype)
         return tensor
 
 class ImageDataObject(DataOject):
