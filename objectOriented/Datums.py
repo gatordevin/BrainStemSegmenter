@@ -10,7 +10,6 @@ class DataOject():
 
     def get_data(self):
         return self._data
-
     def _set_data(self, data):
         self._data = data
 
