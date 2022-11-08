@@ -1,53 +1,38 @@
 from Datasets import CountceptionPickleDataset, CountceptionRawDataset
 from matplotlib import pyplot as plt
 from Models import CountCeptionModel
-from torch.utils.data import DataLoader
-import pytorch_lightning as pl
-from torch.utils.data import random_split
-import numpy as np
-
+from notebookTrain import *
+model = CountCeptionModel()
+model = model.load_from_checkpoint("C:/Users/gator/FullerLab/BrainStemSegmenter/lightning_logs/version_35/checkpoints/epoch=999-step=10000.ckpt")
+model.eval()
+data_module = CountceptionDataModule("C:/Users/gator/OneDrive - University of Florida/10x images for quantification/Manual Counts/cropped")
+data_module.setup("test")
+loader = data_module.test_dataloader()
 if __name__ == '__main__':
-    # dataset = CountceptionPickleDataset("objectOriented/MBM-dataset.pkl")
-    dataset = CountceptionRawDataset("C:/Users/gator/FullerLab/BrainStemSegmenter/Data_10-28-2022/cropped")
-
-    # for data in dataset:
-    #     f, axarr = plt.subplots(2,1)
-    #     print(data[0].shape)
-    #     print(data[1][0].shape)
-    #     axarr[0].imshow(data[0].detach().permute(1, 2, 0))
-    #     print(data[1][0].dtype)
-    #     axarr[1].imshow(data[1][0].detach())
-    #     plt.show()
-    train_dataset, val_dataset, test_dataset = random_split(dataset, [174,20,20])
-
-    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=4)
-
-    model = CountCeptionModel()
-    model = model.load_from_checkpoint("C:/Users/gator/FullerLab/BrainStemSegmenter/lightning_logs/version_21/checkpoints/epoch=435-step=18748 copy.ckpt")
-    # model.eval()
-
-    for idx, data in enumerate(test_loader):
-        img = data[0]
-        target = data[1]
-        count = data[2]
-        loss = model.training_step(data,idx)
-        print(loss)
-        pred = model.forward(img)
-        f, axarr = plt.subplots(1,1) 
-        # axarr[0].imshow(target[0].detach().permute(1, 2, 0))
-        print(img.shape)
-        axarr.imshow(np.pad(img[0].detach().permute(1,2,0)[:,:,0],16, "constant"))
-        axarr.imshow(pred[0].detach().permute(1, 2, 0),alpha=0.3)
-        plt.savefig("image_"+str(idx)+".png")
-        plt.show()
-    # training
-
-    # model.load_from_checkpoint(
-    #     checkpoint_path="lightning_logs/version_14/checkpoints/epoch=999-step=4000.ckpt",
-    #     hparams_file="lightning_logs/version_14/hparams.yaml",
-    #     map_location=None,
-    # )
-    # trainer = pl.Trainer(accelerator='gpu', devices=1, precision=16, limit_train_batches=0.5, max_epochs=1000)
-    # trainer.validate(model,val_loader,"lightning_logs/version_14/checkpoints/epoch=999-step=4000.ckpt")
+    for batch in loader:
+        images = batch[0]
+        labels = batch[1]
+        counts = batch[2]
+        for image, label, count in list(zip(images, labels, counts)):
+            image_model = torch.stack([image])
+            pred = model.forward(image_model)
+            patch_size = 32
+            ef = ((patch_size / 1) ** 2.0)
+            pred_count = (pred.detach().numpy() / ef).sum(axis=(2, 3))
+            image = image.detach().permute(1,2,0)
+            pred = pred[0].detach().permute(1,2,0)
+            label = label.detach().permute(1,2,0)
+            f, axarr = plt.subplots(2,2)
+            # plt.imshow(np.pad(image[:,:,1],int(patch_size/2), "constant"))
+            axarr[0][0].imshow(label)
+            axarr[1][0].imshow(pred)
+            axarr[0][1].imshow(image)
+            NEUN_image = image[:,:,1]*3
+            axarr[1][1].imshow(np.stack([NEUN_image,NEUN_image,NEUN_image]).transpose(1,2,0))
+            
+            plt.title("Real count: " + count + " Pred count: " +str(pred_count))
+            plt.savefig("Real coun " + count + " Pred count " +str(pred_count[0][0]) + " test plot.png", dpi=800)
+            # plt.show()
+        print(images.shape)
+        print(labels.shape)
+        print(counts)

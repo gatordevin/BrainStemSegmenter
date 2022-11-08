@@ -102,10 +102,10 @@ class CountceptionDataModule(pl.LightningDataModule):
             self.countception_predict = CountceptionDataset(self.data_dir, train=False, transform=self.transform)
 
     def train_dataloader(self):
-        return DataLoader(self.countception_train, batch_size=2, num_workers=4)
+        return DataLoader(self.countception_train, batch_size=8, num_workers=4)
 
     def val_dataloader(self):
-        return DataLoader(self.countception_val, batch_size=2, num_workers=4)
+        return DataLoader(self.countception_val, batch_size=8, num_workers=4)
 
     def test_dataloader(self):
         return DataLoader(self.countception_test, batch_size=8, num_workers=4)
@@ -120,7 +120,7 @@ data_module = CountceptionDataModule("C:/Users/gator/OneDrive - University of Fl
 trainer = pl.Trainer(
     auto_lr_find=True, 
     profiler="simple", 
-    accelerator='cpu', 
+    accelerator='gpu', 
     devices=1, 
     precision=16, 
     limit_train_batches=0.5, 
